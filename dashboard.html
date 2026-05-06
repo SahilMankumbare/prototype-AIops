@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIOps Network Intelligence — Real Devices</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0b0f1a; color: #e2e8f0; }
+        .glass { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; }
+        .status-up { color: #10b981; background: rgba(16,185,129,0.1); border-left: 4px solid #10b981; }
+        .status-down { color: #ef4444; background: rgba(239,68,68,0.1); border-left: 4px solid #ef4444; }
+        .status-unreachable { color: #f59e0b; background: rgba(245,158,11,0.1); border-left: 4px solid #f59e0b; }
+        .logs { background-color: #000; font-family: 'Courier New', monospace; border: 1px solid #334155; color: #4ade80; }
+        button.primary { background: #3b82f6; transition: all 0.3s; }
+        button.primary:hover { background: #2563eb; transform: translateY(-1px); }
+        button.secondary { background: #475569; transition: all 0.3s; }
+    </style>
+    <script>
+        function refreshData() {
+            fetch('/get-config')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('hostname').innerText = data.hostname;
+                    document.getElementById('last-poll').innerText = data.last_poll || '--';
+
+                    // Interfaces
+                    const interfacesDiv = document.getElementById('interfaces');
+                    interfacesDiv.innerHTML = '';
+                    for (const [intf, details] of Object.entries(data.interfaces || {})) {
+                        const div = document.createElement('div');
+                        div.className = `p-3 mb-2 rounded-lg text-sm font-medium status-${details.status}`;
+                        div.innerText = `${intf}: ${details.status.toUpperCase()} (link: ${details.link || '?'}, proto: ${details.protocol || '?'})`;
+                        interfacesDiv.appendChild(div);
+                    }
+                    if (Object.keys(data.interfaces || {}).length === 0) {
+                        interfacesDiv.innerHTML = '<div class="text-slate-500 text-sm">Polling devices — please wait...</div>';
+                    }
+
+                    // ACLs
+                    const aclsDiv = document.getElementById('acls');
+                    aclsDiv.innerHTML = '';
+                    for (const [aclNum, aclData] of Object.entries(data.acls || {})) {
+                        const aclDiv = document.createElement('div');
+                        aclDiv.className = 'p-3 mb-2 rounded-lg text-sm font-medium bg-slate-700';
+                        let rulesText = '';
+                        aclData.rules.forEach(rule => {
+                            if (aclData.type === 'standard') {
+                                rulesText += `  ${rule.seq} ${rule.action} ${rule.src}\n`;
+                            } else {
+                                rulesText += `  ${rule.seq} ${rule.action} ${rule.protocol || 'ip'} ${rule.src} ${rule.dst}\n`;
+                            }
+                        });
+                        aclDiv.innerText = `ACL ${aclNum} (${aclData.type}):\n${rulesText.trim()}`;
+                        aclsDiv.appendChild(aclDiv);
+                    }
+                    if (Object.keys(data.acls || {}).length === 0) {
+                        aclsDiv.innerHTML = '<div class="text-slate-500 text-sm">No ACLs found.</div>';
+                    }
+
+                    // All devices panel
+                    const devDiv = document.getElementById('all-devices');
+                    if (devDiv && data.all_devices) {
+                        devDiv.innerHTML = '';
+                        data.all_devices.forEach(d => {
+                            const row = document.createElement('div');
+                            const ok = d.reachable;
+                            row.className = `p-2 mb-1 rounded text-xs ${ok ? 'status-up' : 'status-unreachable'}`;
+                            row.innerText = `${d.name} (${d.host}): ${ok ? d.interface_count + ' interfaces' : 'UNREACHABLE'}`;
+                            devDiv.appendChild(row);
+                        });
+                    }
+                })
+                .catch(() => {
+                    document.getElementById('hostname').innerText = 'Server not running';
+                });
+
+            fetch('/get-logs')
+                .then(r => r.text())
+                .then(logs => {
+                    const el = document.getElementById('logs');
+                    el.innerText = logs;
+                    el.scrollTop = el.scrollHeight;
+                });
+        }
+
+        function executeCommand() {
+            const command = document.getElementById('command-input').value.trim();
+            const device = document.getElementById('device-select').value;
+            const resultDiv = document.getElementById('command-result');
+
+            if (!command) {
+                resultDiv.innerText = 'Please enter a command.';
+                return;
+            }
+
+            resultDiv.innerText = 'Executing...';
+
+            fetch('/execute-command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: command, device: device })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    let msg = 'Error: ' + data.error;
+                    if (data.details) {
+                        msg += ' | Details: ' + JSON.stringify(data.details);
+                    }
+                    resultDiv.innerText = msg;
+                    resultDiv.className = 'text-xs text-red-400 mt-2';
+                } else {
+                    resultDiv.innerText = data.message;
+                    resultDiv.className = 'text-xs text-green-400 mt-2';
+                    document.getElementById('command-input').value = '';
+                    refreshData();  // Refresh logs and data
+                }
+            })
+            .catch(err => {
+                resultDiv.innerText = 'Network error: ' + err.message;
+                resultDiv.className = 'text-xs text-red-400 mt-2';
+            });
+        }
+
+        setInterval(refreshData, 3000);
+        window.onload = refreshData;
+    </script>
+</head>
+<body class="p-4 md:p-8">
+<div class="max-w-6xl mx-auto">
+    <header class="flex justify-between items-center mb-8 pb-6 border-b border-slate-800">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-white">
+                AIOps <span class="text-blue-500">Real Device Intelligence</span>
+            </h1>
+            <p class="text-slate-500 text-sm">
+                Device: <span id="hostname" class="font-mono text-blue-400">--</span>
+                &nbsp;|&nbsp; Last poll: <span id="last-poll" class="font-mono text-slate-400 text-xs">--</span>
+            </p>
+        </div>
+        <div class="space-x-2">
+            <button onclick="fetch('/run-ai', {method:'POST'}).then(()=>refreshData())"
+                class="primary text-white px-4 py-2 rounded-lg text-sm font-semibold">
+                Run AI Agent
+            </button>
+        </div>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="space-y-6">
+            <section class="glass p-5">
+                <h2 class="text-sm uppercase tracking-widest text-slate-400 font-bold mb-4">Interface Status</h2>
+                <div id="interfaces">
+                    <div class="text-slate-500 text-sm">Connecting to devices...</div>
+                </div>
+            </section>
+
+            <section class="glass p-5">
+                <h2 class="text-sm uppercase tracking-widest text-slate-400 font-bold mb-4">ACL Status</h2>
+                <div id="acls">
+                    <div class="text-slate-500 text-sm">Loading ACLs...</div>
+                </div>
+            </section>
+
+            <section class="glass p-5">
+                <h2 class="text-sm uppercase tracking-widest text-slate-400 font-bold mb-3">All Devices</h2>
+                <div id="all-devices">
+                    <div class="text-slate-500 text-sm">--</div>
+                </div>
+            </section>
+        </div>
+
+        <div class="lg:col-span-2 space-y-6">
+            <section class="glass p-5">
+                <h2 class="text-sm uppercase tracking-widest text-slate-400 font-bold mb-3">Manual Commands</h2>
+                <div class="space-y-3">
+                    <textarea id="command-input" class="w-full p-3 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm" rows="3" placeholder="Type a command, e.g., 'take Fa0/0 down' or 'push acl from 192.168.1.0 to 192.168.2.0 deny'"></textarea>
+                    <select id="device-select" class="p-2 bg-slate-800 border border-slate-600 rounded text-white text-sm">
+                        <option value="192.168.1.6">R1 (192.168.1.6)</option>
+                        <option value="192.168.2.10">SW1 (192.168.2.10)</option>
+                    </select>
+                    <button onclick="executeCommand()" class="primary px-4 py-2 rounded-lg text-sm font-medium">Execute Command</button>
+                    <div id="command-result" class="text-xs text-green-400 mt-2"></div>
+                </div>
+            </section>
+
+            <section class="glass p-5">
+                <h2 class="text-sm uppercase tracking-widest text-slate-400 font-bold mb-3">Quick Reference</h2>
+                <div class="text-xs text-slate-400 space-y-1">
+                    <p>▸ <span class="font-mono text-blue-300">python ai_agent.py</span> — Start continuous AI monitoring</p>
+                    <p>▸ <span class="font-mono text-blue-300">python drift_detector.py --snapshot</span> — Save golden config</p>
+                    <p>▸ <span class="font-mono text-blue-300">python drift_detector.py --check</span> — Detect config drift</p>
+                    <p>▸ <span class="font-mono text-blue-300">python collector.py</span> — Test device connectivity</p>
+                </div>
+            </section>
+            <section>
+                <h2 class="text-sm uppercase tracking-widest text-slate-400 font-bold mb-2 ml-1">System Logs</h2>
+                <div class="logs h-80 p-4 overflow-y-auto rounded-lg shadow-inner text-xs leading-relaxed" id="logs">
+                    Initializing log stream...
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+</body>
+</html>

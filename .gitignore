@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+.env
+
+# Project specific ignores
+golden_config.txt
+*.log
+.vscode/
+.idea/
