@@ -1,0 +1,6 @@
+flask
+netmiko
+requests
+python-dotenv
+pysnmp
+fpdf
