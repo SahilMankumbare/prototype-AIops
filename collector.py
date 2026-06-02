@@ -19,10 +19,9 @@ def parse_interfaces(raw_output: str) -> dict:
     Returns: { "GigabitEthernet0/0": { "status": "up", "protocol": "up", "description": "..." } }
     """
     interfaces = {}
-    # Match lines like: GigabitEthernet0/0 is up, line protocol is up
-    # Using a simpler split-based or robust multi-line regex
-    # This regex looks for the interface name and then the statuses, allowing for potential newlines/spaces
-    pattern = r'^(\S+)\s+is\s+([\w\s]+),\s+line protocol is\s+(\w+)'
+    # Match: GigabitEthernet0/0 is up, line protocol is up
+    #         GigabitEthernet0/1 is administratively down, line protocol is down
+    pattern = r'^(\S+)\s+is\s+(up|down|administratively\s+down),\s+line protocol is\s+(up|down)'
     
     for match in re.finditer(pattern, raw_output, re.MULTILINE):
         name = match.group(1)

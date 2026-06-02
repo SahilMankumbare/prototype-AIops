@@ -3,217 +3,597 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AIOps Network Intelligence — Real Devices</title>
+    <title>AIOps — AI Network Intelligence</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #0b0f1a; color: #e2e8f0; }
-        .glass { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; }
-        .status-up { color: #10b981; background: rgba(16,185,129,0.1); border-left: 4px solid #10b981; }
-        .status-down { color: #ef4444; background: rgba(239,68,68,0.1); border-left: 4px solid #ef4444; }
-        .status-unreachable { color: #f59e0b; background: rgba(245,158,11,0.1); border-left: 4px solid #f59e0b; }
-        .logs { background-color: #000; font-family: 'Courier New', monospace; border: 1px solid #334155; color: #4ade80; }
-        button.primary { background: #3b82f6; transition: all 0.3s; }
-        button.primary:hover { background: #2563eb; transform: translateY(-1px); }
-        button.secondary { background: #475569; transition: all 0.3s; }
+        body { background: #080b1a; color: #e2e8f0; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .glass { background: rgba(20, 28, 50, 0.75); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; backdrop-filter: blur(8px); }
+        .glass-light { background: rgba(25, 35, 60, 0.5); border: 1px solid rgba(255,255,255,0.04); border-radius: 10px; }
+        .card { background: rgba(15, 20, 40, 0.6); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; }
+        .card-hover:hover { border-color: rgba(59,130,246,0.3); }
+        .status-up { color: #10b981; }
+        .status-down { color: #ef4444; }
+        .status-unreachable { color: #f59e0b; }
+        .chip { border: 1px solid rgba(148,163,184,0.15); background: rgba(15,23,42,0.5); border-radius: 999px; padding: 4px 12px; color: #94a3b8; font-size: 11px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+        .chip:hover { border-color: rgba(59,130,246,0.6); color: white; background: rgba(59,130,246,0.1); }
+        .btn-primary { background: linear-gradient(135deg, #2563eb, #1d4ed8); transition: all 0.2s; border-radius: 10px; }
+        .btn-primary:hover { background: linear-gradient(135deg, #3b82f6, #2563eb); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(37,99,235,0.3); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-secondary { background: rgba(71,85,105,0.4); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; transition: all 0.2s; }
+        .btn-secondary:hover { background: rgba(71,85,105,0.6); }
+        .chat-stream { height: 340px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(59,130,246,0.3) transparent; }
+        .chat-stream::-webkit-scrollbar { width: 4px; }
+        .chat-stream::-webkit-scrollbar-thumb { background: rgba(59,130,246,0.3); border-radius: 4px; }
+        .bubble { max-width: 88%; border-radius: 14px; padding: 10px 14px; margin-bottom: 8px; white-space: pre-wrap; line-height: 1.5; font-size: 13px; }
+        .bubble.ai { background: rgba(25, 35, 60, 0.8); border: 1px solid rgba(148,163,184,0.1); color: #dbeafe; }
+        .bubble.user { background: linear-gradient(135deg, #1d4ed8, #2563eb); color: white; margin-left: auto; }
+        .approval-card { border: 1px solid rgba(245,158,11,0.3); background: rgba(120,53,15,0.15); border-radius: 10px; }
+        .command-preview { background: rgba(2,6,23,0.7); border: 1px solid rgba(251,191,36,0.12); border-radius: 8px; color: #fde68a; font-family: 'Courier New', monospace; font-size: 11px; padding: 8px; white-space: pre-wrap; }
+        .insight-card { background: linear-gradient(135deg, rgba(59,130,246,0.06), rgba(16,185,129,0.04)); border: 1px solid rgba(59,130,246,0.15); border-radius: 14px; }
+        .health-ring { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; border: 3px solid; flex-shrink: 0; }
+        .flapping-alert { background: rgba(239,68,68,0.08); border-left: 3px solid #ef4444; border-radius: 6px; }
+        .section-header { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #64748b; font-weight: 600; }
+        .input-field { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: white; transition: border-color 0.2s; }
+        .input-field:focus { outline: none; border-color: rgba(59,130,246,0.5); }
+        select.input-field option { background: #0f172a; color: white; }
+        .modal-overlay { background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
+        .log-text { font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.6; }
+        .stat-value { font-size: 22px; font-weight: 700; }
+        .stat-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+        .intf-card { border-radius: 8px; padding: 8px 10px; font-size: 12px; font-weight: 500; }
+        .intf-card.status-up { background: rgba(16,185,129,0.06); border-left: 3px solid #10b981; color: #10b981; }
+        .intf-card.status-down { background: rgba(239,68,68,0.06); border-left: 3px solid #ef4444; color: #ef4444; }
     </style>
-    <script>
-        function refreshData() {
-            fetch('/get-config')
-                .then(r => r.json())
-                .then(data => {
-                    document.getElementById('hostname').innerText = data.hostname;
-                    document.getElementById('last-poll').innerText = data.last_poll || '--';
-
-                    // Interfaces
-                    const interfacesDiv = document.getElementById('interfaces');
-                    interfacesDiv.innerHTML = '';
-                    for (const [intf, details] of Object.entries(data.interfaces || {})) {
-                        const div = document.createElement('div');
-                        div.className = `p-3 mb-2 rounded-lg text-sm font-medium status-${details.status}`;
-                        div.innerText = `${intf}: ${details.status.toUpperCase()} (link: ${details.link || '?'}, proto: ${details.protocol || '?'})`;
-                        interfacesDiv.appendChild(div);
-                    }
-                    if (Object.keys(data.interfaces || {}).length === 0) {
-                        interfacesDiv.innerHTML = '<div class="text-slate-500 text-sm">Polling devices — please wait...</div>';
-                    }
-
-                    // ACLs
-                    const aclsDiv = document.getElementById('acls');
-                    aclsDiv.innerHTML = '';
-                    for (const [aclNum, aclData] of Object.entries(data.acls || {})) {
-                        const aclDiv = document.createElement('div');
-                        aclDiv.className = 'p-3 mb-2 rounded-lg text-sm font-medium bg-slate-700';
-                        let rulesText = '';
-                        aclData.rules.forEach(rule => {
-                            if (aclData.type === 'standard') {
-                                rulesText += `  ${rule.seq} ${rule.action} ${rule.src}\n`;
-                            } else {
-                                rulesText += `  ${rule.seq} ${rule.action} ${rule.protocol || 'ip'} ${rule.src} ${rule.dst}\n`;
-                            }
-                        });
-                        aclDiv.innerText = `ACL ${aclNum} (${aclData.type}):\n${rulesText.trim()}`;
-                        aclsDiv.appendChild(aclDiv);
-                    }
-                    if (Object.keys(data.acls || {}).length === 0) {
-                        aclsDiv.innerHTML = '<div class="text-slate-500 text-sm">No ACLs found.</div>';
-                    }
-
-                    // All devices panel
-                    const devDiv = document.getElementById('all-devices');
-                    if (devDiv && data.all_devices) {
-                        devDiv.innerHTML = '';
-                        data.all_devices.forEach(d => {
-                            const row = document.createElement('div');
-                            const ok = d.reachable;
-                            row.className = `p-2 mb-1 rounded text-xs ${ok ? 'status-up' : 'status-unreachable'}`;
-                            row.innerText = `${d.name} (${d.host}): ${ok ? d.interface_count + ' interfaces' : 'UNREACHABLE'}`;
-                            devDiv.appendChild(row);
-                        });
-                    }
-                })
-                .catch(() => {
-                    document.getElementById('hostname').innerText = 'Server not running';
-                });
-
-            fetch('/get-logs')
-                .then(r => r.text())
-                .then(logs => {
-                    const el = document.getElementById('logs');
-                    el.innerText = logs;
-                    el.scrollTop = el.scrollHeight;
-                });
-        }
-
-        function downloadLogsPdf() {
-            window.location.href = '/download-logs-pdf';
-        }
-
-        function executeCommand() {
-            const command = document.getElementById('command-input').value.trim();
-            const device = document.getElementById('device-select').value;
-            const resultDiv = document.getElementById('command-result');
-
-            if (!command) {
-                resultDiv.innerText = 'Please enter a command.';
-                return;
-            }
-
-            resultDiv.innerText = 'Executing...';
-
-            fetch('/execute-command', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ command: command, device: device })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    let msg = 'Error: ' + data.error;
-                    if (data.details) {
-                        msg += ' | Details: ' + JSON.stringify(data.details);
-                    }
-                    resultDiv.innerText = msg;
-                    resultDiv.className = 'text-xs text-red-400 mt-2';
-                } else {
-                    resultDiv.innerText = data.message;
-                    resultDiv.className = 'text-xs text-green-400 mt-2';
-                    document.getElementById('command-input').value = '';
-                    refreshData();  // Refresh logs and data
-                    if (data.download_url) {
-                        window.location.href = data.download_url;
-                    }
-                }
-            })
-            .catch(err => {
-                resultDiv.innerText = 'Network error: ' + err.message;
-                resultDiv.className = 'text-xs text-red-400 mt-2';
-            });
-        }
-
-        setInterval(refreshData, 3000);
-        window.onload = refreshData;
-    </script>
 </head>
-<body class="p-4 md:p-8">
-<div class="max-w-6xl mx-auto">
-    <header class="flex justify-between items-center mb-8 pb-6 border-b border-slate-800">
-        <div>
-            <h1 class="text-2xl font-bold tracking-tight text-white">
-                AIOps <span class="text-blue-500">Real Device Intelligence</span>
-            </h1>
-            <p class="text-slate-500 text-sm">
-                Device: <span id="hostname" class="font-mono text-blue-400">--</span>
-                &nbsp;|&nbsp; Last poll: <span id="last-poll" class="font-mono text-slate-400 text-xs">--</span>
-            </p>
+<body>
+<div class="max-w-7xl mx-auto px-4 py-5">
+
+    <!-- ─── HEADER ─── -->
+    <header class="flex items-center justify-between mb-6 pb-4 border-b border-white/5">
+        <div class="flex items-center gap-4">
+            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center text-white text-sm font-bold">AI</div>
+            <div>
+                <h1 class="text-lg font-bold text-white tracking-tight">AIOps <span class="text-blue-400">Intelligence</span></h1>
+                <p class="text-xs text-slate-500">
+                    <span id="hostname" class="text-blue-300 font-mono">--</span>
+                    <span class="mx-1.5 opacity-30">|</span>
+                    <span id="last-poll" class="font-mono">--</span>
+                    <span class="mx-1.5 opacity-30">|</span>
+                    <span class="text-purple-300 font-mono">{{ ai_model }}</span>
+                </p>
+            </div>
         </div>
-        <div class="space-x-2">
-            <button onclick="fetch('/run-ai', {method:'POST'}).then(()=>refreshData())"
-                class="primary text-white px-4 py-2 rounded-lg text-sm font-semibold">
-                Run AI Agent
-            </button>
+        <div class="flex items-center gap-2">
+            <span id="health-status-badge" class="text-[10px] px-2.5 py-1 rounded-full border score-healthy border-emerald-500/40 text-emerald-400 font-semibold">HEALTHY</span>
+            <button id="run-ai-btn" onclick="runAIAgent()" class="btn-primary text-white px-4 py-2 text-xs font-semibold">Run AI Agent</button>
         </div>
     </header>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="space-y-6">
-            <section class="glass p-5">
-                <h2 class="text-sm uppercase tracking-widest text-slate-400 font-bold mb-4">Interface Status</h2>
-                <div id="interfaces">
-                    <div class="text-slate-500 text-sm">Connecting to devices...</div>
-                </div>
+    <!-- ─── QUICK STATS ROW ─── -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div class="glass-light p-3 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-lg">📡</div>
+            <div><div class="stat-value text-emerald-400" id="stat-reachable">0</div><div class="stat-label">Reachable</div></div>
+        </div>
+        <div class="glass-light p-3 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 text-lg">🔌</div>
+            <div><div class="stat-value text-blue-400" id="stat-interfaces">0</div><div class="stat-label">Interfaces</div></div>
+        </div>
+        <div class="glass-light p-3 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400 text-lg">⚠️</div>
+            <div><div class="stat-value text-red-400" id="stat-down">0</div><div class="stat-label">Down</div></div>
+        </div>
+        <div class="glass-light p-3 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400 text-lg">🧠</div>
+            <div><div class="stat-value text-amber-400" id="stat-health-score">--</div><div class="stat-label">AI Score</div></div>
+        </div>
+    </div>
+
+    <!-- ─── MAIN GRID ─── -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+        <!-- ─── LEFT SIDEBAR: Devices, Interfaces, ACLs ─── -->
+        <div class="lg:col-span-3 space-y-4">
+
+            <section class="card p-4">
+                <h2 class="section-header mb-3">Devices</h2>
+                <div id="all-devices"><div class="text-xs text-slate-500">--</div></div>
             </section>
 
-            <section class="glass p-5">
-                <h2 class="text-sm uppercase tracking-widest text-slate-400 font-bold mb-4">ACL Status</h2>
-                <div id="acls">
-                    <div class="text-slate-500 text-sm">Loading ACLs...</div>
+            <section class="card p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="section-header">Interfaces</h2>
+                    <button onclick="usePrompt('show interfaces')" class="chip text-[10px] py-1">Show all</button>
                 </div>
+                <div id="interfaces"><div class="text-xs text-slate-500">Connecting...</div></div>
             </section>
 
-            <section class="glass p-5">
-                <h2 class="text-sm uppercase tracking-widest text-slate-400 font-bold mb-3">All Devices</h2>
-                <div id="all-devices">
-                    <div class="text-slate-500 text-sm">--</div>
+            <section class="card p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="section-header">ACLs</h2>
+                    <button onclick="usePrompt('show me acl')" class="chip text-[10px] py-1">Show all</button>
                 </div>
+                <div id="acls"><div class="text-xs text-slate-500">Loading...</div></div>
             </section>
+
         </div>
 
-        <div class="lg:col-span-2 space-y-6">
-            <section class="glass p-5">
-                <h2 class="text-sm uppercase tracking-widest text-slate-400 font-bold mb-3">Manual Commands</h2>
-                <div class="space-y-3">
-                    <textarea id="command-input" class="w-full p-3 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm" rows="3" placeholder="Type a command, e.g., 'take Fa0/0 down', 'push acl from 192.168.1.0 to 192.168.2.0 deny', 'show ip int brief', or 'get me logs'"></textarea>
-                    <select id="device-select" class="p-2 bg-slate-800 border border-slate-600 rounded text-white text-sm">
+        <!-- ─── CENTER: AI Intelligence + Chat ─── -->
+        <div class="lg:col-span-6 space-y-4">
+
+            <!-- AI Intelligence Panel -->
+            <div class="insight-card p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="section-header text-blue-300">AI Intelligence</h2>
+                    <div class="flex items-center gap-3">
+                        <span id="health-score-ring" class="text-xs text-slate-400"></span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-3">
+                    <div class="flex items-center gap-3 md:col-span-2">
+                        <div id="health-ring" class="health-ring text-lg" style="border-color:#10b981;color:#10b981;">--</div>
+                        <div>
+                            <div id="ai-summary" class="text-xs text-slate-300 leading-relaxed">Analyzing network...</div>
+                        </div>
+                    </div>
+                    <div class="md:col-span-3 grid grid-cols-2 gap-3">
+                        <div>
+                            <div class="text-[10px] text-slate-500 font-semibold uppercase tracking-wide mb-1">Issues</div>
+                            <div id="ai-issues" class="text-xs text-slate-500">None</div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-slate-500 font-semibold uppercase tracking-wide mb-1">Recommendations</div>
+                            <div id="ai-recommendations" class="text-xs text-slate-500">None</div>
+                        </div>
+                    </div>
+                </div>
+                <div id="ai-deep-insight" class="text-xs text-blue-300/80 bg-blue-950/30 p-3 rounded-lg border border-blue-500/10 mb-3 leading-relaxed" style="display:none;"></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <div class="text-[10px] text-slate-500 font-semibold uppercase tracking-wide mb-1.5">Flapping Interfaces</div>
+                        <div id="flapping-list" class="text-xs text-slate-500">None detected.</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-slate-500 font-semibold uppercase tracking-wide mb-1.5">Trend Summary</div>
+                        <div id="trend-summary" class="text-xs text-slate-500 leading-relaxed">Collecting data...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat -->
+            <section class="card p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h2 class="section-header text-blue-300">AI Network Copilot</h2>
+                        <p class="text-[10px] text-slate-600 mt-0.5">Conversational AI with full network visibility</p>
+                    </div>
+                    <span class="text-[10px] px-2 py-1 rounded-full bg-emerald-500/8 text-emerald-400/80 border border-emerald-500/20">Human gated</span>
+                </div>
+                <div id="chat-stream" class="chat-stream mb-3 pr-1.5"></div>
+                <div class="flex flex-wrap gap-1.5 mb-3">
+                    <button class="chip" onclick="usePrompt('what is the network status')">Status</button>
+                    <button class="chip" onclick="usePrompt('show me acl')">ACLs</button>
+                    <button class="chip" onclick="usePrompt('show interfaces')">Interfaces</button>
+                    <button class="chip" onclick="usePrompt('get me logs')">Logs</button>
+                    <button class="chip" onclick="usePrompt('show running config')">Config</button>
+                    <button class="chip" onclick="usePrompt('take this Fa0/1 interface down')">Fa0/1 down</button>
+                    <button class="chip" onclick="triggerRootCauseFromDown()">Root cause</button>
+                </div>
+                <div class="flex gap-2">
+                    <input id="chat-input" onkeydown="if(event.key === 'Enter'){ sendChat(); }"
+                        class="flex-1 input-field px-4 py-2.5 text-sm"
+                        placeholder="Ask anything — ACLs, interfaces, logs, config, changes...">
+                    <button onclick="sendChat()" class="btn-primary px-5 py-2.5 text-sm font-medium text-white">Send</button>
+                </div>
+                <!-- Approval Queue (collapsible inline) -->
+                <div class="mt-4 pt-3 border-t border-white/5">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-[10px] uppercase tracking-wider text-amber-400/70 font-semibold">Approval Queue</h3>
+                        <span id="approval-count" class="text-[10px] text-slate-600"></span>
+                    </div>
+                    <div id="approval-list"><div class="text-xs text-slate-600">None pending.</div></div>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- ─── RIGHT PANEL: Logs + Quick Actions ─── -->
+        <div class="lg:col-span-3 space-y-4">
+
+            <section class="card p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="section-header">Actions</h2>
+                </div>
+                <div class="space-y-2">
+                    <textarea id="command-input" class="input-field w-full p-3 text-xs" rows="3" placeholder="e.g. 'push acl from 192.168.1.0 to 192.168.2.0 deny'"></textarea>
+                    <select id="device-select" class="input-field w-full p-2.5 text-xs">
                         {% for device in devices %}
                         <option value="{{ device.host }}">{{ device.name }} ({{ device.host }})</option>
                         {% endfor %}
                     </select>
-                    <div class="flex flex-wrap gap-2 items-center">
-                        <button onclick="executeCommand()" class="primary px-4 py-2 rounded-lg text-sm font-medium">Execute Command</button>
-                        <button onclick="downloadLogsPdf()" class="secondary px-4 py-2 rounded-lg text-sm font-medium">Download Logs PDF</button>
+                    <div class="flex gap-2">
+                        <button onclick="executeCommand()" class="btn-primary flex-1 px-3 py-2 text-xs font-medium text-white">Execute</button>
+                        <button onclick="downloadLogsPdf()" class="btn-secondary flex-1 px-3 py-2 text-xs text-slate-300">PDF Logs</button>
                     </div>
-                    <div class="text-xs text-slate-400">Try: <strong>get me logs</strong>, <strong>give me logs</strong>, or <strong>show logs</strong> to fetch router logs and download them as a PDF.</div>
-                    <div id="command-result" class="text-xs text-green-400 mt-2"></div>
+                    <div id="command-result" class="text-xs text-green-400/80 mt-1"></div>
                 </div>
             </section>
 
-            <section class="glass p-5">
-                <h2 class="text-sm uppercase tracking-widest text-slate-400 font-bold mb-3">Quick Reference</h2>
-                <div class="text-xs text-slate-400 space-y-1">
-                    <p>▸ <span class="font-mono text-blue-300">python ai_agent.py</span> — Start continuous AI monitoring</p>
-                    <p>▸ <span class="font-mono text-blue-300">python drift_detector.py --snapshot</span> — Save golden config</p>
-                    <p>▸ <span class="font-mono text-blue-300">python drift_detector.py --check</span> — Detect config drift</p>
-                    <p>▸ <span class="font-mono text-blue-300">python collector.py</span> — Test device connectivity</p>
+            <section class="card p-4">
+                <h2 class="section-header mb-3">Quick Reference</h2>
+                <div class="space-y-1.5 text-xs text-slate-500">
+                    <p><span class="text-blue-300 font-mono">ai_agent.py</span> — AI monitoring loop</p>
+                    <p><span class="text-blue-300 font-mono">drift_detector.py --check</span> — Config drift check</p>
+                    <p><span class="text-blue-300 font-mono">collector.py</span> — Test connectivity</p>
                 </div>
             </section>
-            <section>
-                <h2 class="text-sm uppercase tracking-widest text-slate-400 font-bold mb-2 ml-1">System Logs</h2>
-                <div class="logs h-80 p-4 overflow-y-auto rounded-lg shadow-inner text-xs leading-relaxed" id="logs">
-                    Initializing log stream...
+
+            <section class="card p-0 overflow-hidden">
+                <div class="p-4 pb-2">
+                    <h2 class="section-header">System Logs</h2>
+                </div>
+                <div class="log-text h-56 overflow-y-auto px-4 pb-4 text-green-400/80" id="logs" style="background:rgba(0,0,0,0.3);">
+                    Initializing...
                 </div>
             </section>
+
         </div>
     </div>
 </div>
+
+<!-- Root Cause Modal -->
+<div id="root-cause-modal" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-50 p-4" onclick="if(event.target===this)closeRootCause()">
+    <div class="card p-6 max-w-xl w-full max-h-[80vh] overflow-y-auto" style="background:rgba(12,18,38,0.95);border-color:rgba(59,130,246,0.2);">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="root-cause-title" class="text-sm font-semibold text-blue-300">Root Cause Analysis</h3>
+            <button onclick="closeRootCause()" class="text-slate-500 hover:text-white text-lg leading-none">&times;</button>
+        </div>
+        <div id="root-cause-result" class="text-xs text-slate-400 leading-relaxed">Click "Analyze" on a down or flapping interface.</div>
+        <div class="mt-4 flex gap-2">
+            <button onclick="closeRootCause()" class="btn-secondary px-4 py-2 text-xs text-slate-300">Close</button>
+            <button onclick="triggerRootCauseFromDown()" class="btn-primary px-4 py-2 text-xs text-white">Analyze first down interface</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function refreshData() {
+    fetch('/get-config')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('hostname').innerText = data.hostname;
+            document.getElementById('last-poll').innerText = data.last_poll || '--';
+
+            const interfacesDiv = document.getElementById('interfaces');
+            interfacesDiv.innerHTML = '';
+            for (const [intf, details] of Object.entries(data.interfaces || {})) {
+                const div = document.createElement('div');
+                div.className = `intf-card status-${details.status} mb-1.5`;
+                div.innerText = `${intf}: ${details.status.toUpperCase()}`;
+                interfacesDiv.appendChild(div);
+            }
+            if (Object.keys(data.interfaces || {}).length === 0) {
+                interfacesDiv.innerHTML = '<div class="text-xs text-slate-500">Polling devices...</div>';
+            }
+
+            const aclsDiv = document.getElementById('acls');
+            aclsDiv.innerHTML = '';
+            for (const [aclNum, aclData] of Object.entries(data.acls || {})) {
+                const aclDiv = document.createElement('div');
+                aclDiv.className = 'glass-light p-2.5 mb-1.5 text-xs';
+                let rulesText = `ACL ${aclNum} (${aclData.type})\n`;
+                aclData.rules.forEach(rule => {
+                    if (aclData.type === 'standard') {
+                        rulesText += `  ${rule.seq} ${rule.action} ${rule.src}\n`;
+                    } else {
+                        rulesText += `  ${rule.seq} ${rule.action} ${rule.protocol || 'ip'} ${rule.src} ${rule.dst}\n`;
+                    }
+                });
+                aclDiv.innerText = rulesText.trim();
+                aclsDiv.appendChild(aclDiv);
+            }
+            if (Object.keys(data.acls || {}).length === 0) {
+                aclsDiv.innerHTML = '<div class="text-xs text-slate-500">No ACLs found.</div>';
+            }
+
+            const devDiv = document.getElementById('all-devices');
+            let reachableCount = 0, totalInterfaces = 0, downInterfaces = 0;
+            if (devDiv && data.all_devices) {
+                devDiv.innerHTML = '';
+                data.all_devices.forEach(d => {
+                    if (d.reachable) reachableCount += 1;
+                    totalInterfaces += d.interface_count || 0;
+                    const row = document.createElement('div');
+                    row.className = `p-2 mb-1 rounded text-xs ${d.reachable ? 'status-up' : 'status-unreachable'}`;
+                    row.style.background = d.reachable ? 'rgba(16,185,129,0.05)' : 'rgba(245,158,11,0.05)';
+                    row.style.borderLeft = d.reachable ? '3px solid #10b981' : '3px solid #f59e0b';
+                    row.innerText = `${d.name} (${d.host})${d.reachable ? ' \u2022 ' + d.interface_count + ' intf' : ' \u2022 UNREACHABLE'}`;
+                    devDiv.appendChild(row);
+                });
+            }
+            for (const details of Object.values(data.interfaces || {})) {
+                if (details.status === 'down') downInterfaces += 1;
+            }
+            document.getElementById('stat-reachable').innerText = reachableCount;
+            document.getElementById('stat-interfaces').innerText = totalInterfaces;
+            document.getElementById('stat-down').innerText = downInterfaces;
+        })
+        .catch(() => { document.getElementById('hostname').innerText = 'Server not running'; });
+
+    fetch('/get-logs')
+        .then(r => r.text())
+        .then(logs => {
+            const el = document.getElementById('logs');
+            el.innerText = logs;
+            el.scrollTop = el.scrollHeight;
+        });
+}
+
+function downloadLogsPdf() { window.location.href = '/download-logs-pdf'; }
+
+function usePrompt(text) {
+    const input = document.getElementById('chat-input');
+    input.value = text;
+    input.focus();
+}
+
+function addChatBubble(role, text) {
+    const stream = document.getElementById('chat-stream');
+    if (!stream) return;
+    const div = document.createElement('div');
+    div.className = `bubble ${role}`;
+    div.innerText = text;
+    stream.appendChild(div);
+    stream.scrollTop = stream.scrollHeight;
+}
+
+function renderApprovals(approvals) {
+    const box = document.getElementById('approval-list');
+    const count = document.getElementById('approval-count');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!approvals || approvals.length === 0) {
+        box.innerHTML = '<div class="text-xs text-slate-600">None pending.</div>';
+        if (count) count.innerText = '';
+        return;
+    }
+    if (count) count.innerText = `${approvals.length} pending`;
+    approvals.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'approval-card p-3 mb-2';
+        const commands = (item.commands || []).join('\n');
+        div.innerHTML = `
+            <div class="text-[10px] text-amber-300/80 font-semibold mb-1">Human approval required</div>
+            <div class="text-xs text-slate-100 mb-2">${item.description}</div>
+            ${commands ? `<div class="command-preview mb-2">${commands}</div>` : ''}
+            <div class="text-[10px] text-slate-500 mb-2">${item.device_name} \u2022 ${item.created_at}</div>
+            <div class="flex gap-2">
+                <button id="approve-${item.id}" class="btn-primary px-3 py-1.5 text-xs text-white" onclick="approveAction('${item.id}', true)">Approve</button>
+                <button id="deny-${item.id}" class="btn-secondary px-3 py-1.5 text-xs text-slate-300" onclick="approveAction('${item.id}', false)">Deny</button>
+            </div>`;
+        box.appendChild(div);
+    });
+}
+
+function refreshApprovals() {
+    fetch('/pending-approvals')
+        .then(r => r.json())
+        .then(data => renderApprovals(data.approvals || []));
+}
+
+function approveAction(id, approve) {
+    document.getElementById(`approve-${id}`).disabled = true;
+    document.getElementById(`deny-${id}`).disabled = true;
+    fetch('/approve-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approval_id: id, approve: approve })
+    })
+    .then(r => r.json())
+    .then(data => {
+        addChatBubble('ai', data.message || data.error || 'Processed.');
+        if (data.download_url) window.location.href = data.download_url;
+        refreshApprovals();
+        refreshData();
+    });
+}
+
+function sendChat() {
+    const input = document.getElementById('chat-input');
+    const device = document.getElementById('device-select').value;
+    const message = input.value.trim();
+    if (!message) return;
+    addChatBubble('user', message);
+    input.value = '';
+    addChatBubble('ai', 'Thinking...');
+    fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, device })
+    })
+    .then(r => r.json())
+    .then(data => {
+        const stream = document.getElementById('chat-stream');
+        if (stream && stream.lastChild && stream.lastChild.innerText === 'Thinking...') {
+            stream.removeChild(stream.lastChild);
+        }
+        addChatBubble('ai', data.reply || data.message || data.error || 'No response.');
+        if (data.approval_required) refreshApprovals();
+        if (data.download_url) window.location.href = data.download_url;
+        refreshData();
+        refreshInsights();
+    })
+    .catch(err => addChatBubble('ai', 'Error: ' + err.message));
+}
+
+function executeCommand() {
+    const command = document.getElementById('command-input').value.trim();
+    const device = document.getElementById('device-select').value;
+    const resultDiv = document.getElementById('command-result');
+    if (!command) { resultDiv.innerText = 'Enter a command.'; return; }
+    resultDiv.innerText = 'Executing...';
+    fetch('/execute-command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command, device })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            resultDiv.innerText = 'Error: ' + data.error;
+            resultDiv.className = 'text-xs text-red-400/80 mt-1';
+        } else {
+            resultDiv.innerText = data.message;
+            resultDiv.className = 'text-xs text-green-400/80 mt-1';
+            document.getElementById('command-input').value = '';
+            refreshData();
+            if (data.download_url) window.location.href = data.download_url;
+            if (data.approval_required) refreshApprovals();
+        }
+    })
+    .catch(err => {
+        resultDiv.innerText = 'Network error: ' + err.message;
+        resultDiv.className = 'text-xs text-red-400/80 mt-1';
+    });
+}
+
+function refreshInsights() {
+    fetch('/insights')
+        .then(r => r.json())
+        .then(data => {
+            const insight = data.insight || {};
+            const score = insight.score || 0;
+            const status = insight.status || 'UNKNOWN';
+            const issues = insight.issues || [];
+            const recs = insight.recommendations || [];
+            const detailInsight = insight.insight || '';
+            const trendSummary = data.trend_summary || '';
+            const flapping = data.flapping_interfaces || [];
+
+            document.getElementById('stat-health-score').innerText = score || '--';
+
+            const ring = document.getElementById('health-ring');
+            if (ring) {
+                ring.innerText = score;
+                const color = score >= 80 ? '#10b981' : (score >= 50 ? '#f59e0b' : '#ef4444');
+                ring.style.borderColor = color;
+                ring.style.color = color;
+            }
+
+            const badge = document.getElementById('health-status-badge');
+            if (badge) {
+                badge.innerText = status;
+                const cls = status === 'CRITICAL' ? 'text-red-400 border-red-500/40' : status === 'WARNING' ? 'text-amber-400 border-amber-500/40' : 'text-emerald-400 border-emerald-500/40';
+                badge.className = `text-[10px] px-2.5 py-1 rounded-full border font-semibold ${cls}`;
+            }
+
+            const summaryEl = document.getElementById('ai-summary');
+            if (summaryEl) summaryEl.innerText = insight.summary || 'Analyzing network...';
+
+            const deepEl = document.getElementById('ai-deep-insight');
+            if (deepEl) {
+                deepEl.innerText = detailInsight || '';
+                deepEl.style.display = detailInsight ? 'block' : 'none';
+            }
+
+            const issuesEl = document.getElementById('ai-issues');
+            if (issuesEl) {
+                issuesEl.innerHTML = '';
+                if (issues.length === 0) issuesEl.innerHTML = '<span class="text-xs text-slate-500">None</span>';
+                else issues.forEach(issue => {
+                    const d = document.createElement('div');
+                    d.className = 'text-xs text-red-300/90 mb-0.5 leading-relaxed';
+                    d.innerText = `\u2022 ${issue}`;
+                    issuesEl.appendChild(d);
+                });
+            }
+
+            const recsEl = document.getElementById('ai-recommendations');
+            if (recsEl) {
+                recsEl.innerHTML = '';
+                if (recs.length === 0) recsEl.innerHTML = '<span class="text-xs text-slate-500">None</span>';
+                else recs.forEach(rec => {
+                    const d = document.createElement('div');
+                    d.className = 'text-xs text-emerald-300/90 mb-0.5 leading-relaxed';
+                    d.innerText = `\u2022 ${rec}`;
+                    recsEl.appendChild(d);
+                });
+            }
+
+            const flappingEl = document.getElementById('flapping-list');
+            if (flappingEl) {
+                flappingEl.innerHTML = '';
+                if (flapping.length === 0) flappingEl.innerHTML = '<span class="text-xs text-slate-500">None detected.</span>';
+                else flapping.forEach(f => {
+                    const div = document.createElement('div');
+                    div.className = 'flapping-alert p-2 mb-1 text-xs flex justify-between items-center';
+                    div.innerHTML = `<span><strong>${f.device}/${f.interface}</strong> \u2014 ${f.changes} changes</span>
+                        <button onclick="showRootCause('${f.device}', '${f.interface}')" class="text-blue-400 hover:text-blue-300 text-[10px] underline">Analyze</button>`;
+                    flappingEl.appendChild(div);
+                });
+            }
+
+            const trendEl = document.getElementById('trend-summary');
+            if (trendEl) trendEl.innerText = trendSummary || 'Collecting data...';
+        })
+        .catch(() => {});
+}
+
+function showRootCause(device, intf) {
+    document.getElementById('root-cause-title').innerText = `Root Cause: ${device}/${intf}`;
+    document.getElementById('root-cause-result').innerHTML = '<div class="text-xs text-slate-400">AI is analyzing...</div>';
+    document.getElementById('root-cause-modal').classList.remove('hidden');
+    fetch('/root-cause', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device, interface: intf })
+    })
+    .then(r => r.json())
+    .then(data => {
+        const el = document.getElementById('root-cause-result');
+        const history = data.history || [];
+        let html = '<div class="text-[10px] text-slate-500 mb-2">Interface history:</div>';
+        history.forEach(h => {
+            const c = h.status === 'up' ? '#10b981' : '#ef4444';
+            html += `<div class="text-xs mb-0.5" style="color:${c}">${h.time}: ${h.status}</div>`;
+        });
+        html += `<div class="mt-3 text-sm text-slate-100 bg-black/40 p-4 rounded-lg border border-white/5 leading-relaxed">${data.analysis || 'Analysis unavailable.'}</div>`;
+        el.innerHTML = html;
+    })
+    .catch(err => { document.getElementById('root-cause-result').innerText = 'Error: ' + err.message; });
+}
+
+function closeRootCause() { document.getElementById('root-cause-modal').classList.add('hidden'); }
+
+function runAIAgent() {
+    const btn = document.getElementById('run-ai-btn');
+    btn.disabled = true; btn.innerText = 'Running...';
+    fetch('/run-ai', {method:'POST'})
+        .then(r => r.json())
+        .then(data => {
+            addChatBubble('ai', 'AI Agent: ' + (data.message || data.error || 'Done.'));
+            refreshData(); refreshInsights();
+        })
+        .catch(() => {})
+        .finally(() => { btn.disabled = false; btn.innerText = 'Run AI Agent'; });
+}
+
+function triggerRootCauseFromDown() {
+    const dEls = document.querySelectorAll('.intf-card.status-down');
+    if (dEls.length > 0) {
+        const text = dEls[0].innerText || '';
+        const m = text.match(/(\S+):/);
+        if (m) showRootCause(document.getElementById('hostname').innerText || 'device', m[1]);
+    } else {
+        addChatBubble('ai', 'No down interfaces to analyze.');
+    }
+}
+
+setInterval(() => { refreshData(); refreshApprovals(); refreshInsights(); }, 3000);
+window.onload = () => {
+    refreshData(); refreshApprovals(); refreshInsights();
+    addChatBubble('ai', 'I am online. Ask me anything — ACLs, interfaces, logs, config, or changes. Sensitive actions pause for human approval.');
+};
+</script>
 </body>
 </html>
