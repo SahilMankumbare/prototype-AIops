@@ -19,10 +19,9 @@ def parse_interfaces(raw_output: str) -> dict:
     Returns: { "GigabitEthernet0/0": { "status": "up", "protocol": "up", "description": "..." } }
     """
     interfaces = {}
-    # Match lines like: GigabitEthernet0/0 is up, line protocol is up
-    # Using a simpler split-based or robust multi-line regex
-    # This regex looks for the interface name and then the statuses, allowing for potential newlines/spaces
-    pattern = r'^(\S+)\s+is\s+([\w\s]+),\s+line protocol is\s+(\w+)'
+    # Match: GigabitEthernet0/0 is up, line protocol is up
+    #         GigabitEthernet0/1 is administratively down, line protocol is down
+    pattern = r'^(\S+)\s+is\s+(up|down|administratively\s+down),\s+line protocol is\s+(up|down)'
     
     for match in re.finditer(pattern, raw_output, re.MULTILINE):
         name = match.group(1)
@@ -106,7 +105,8 @@ def poll_device(device_config: dict) -> dict:
         print(f"  Connecting to {device_config['name']} ({device_config['host']})...")
         # Added global_delay_factor to handle slow EVE-NG responses
         connection_params = {k: v for k, v in device_config.items() if k != "name"}
-        conn = ConnectHandler(**connection_params, global_delay_factor=2)
+        connection_params.setdefault("global_delay_factor", 2)
+        conn = ConnectHandler(**connection_params)
         conn.enable()  # Enter enable mode
 
         # Get interface status
@@ -124,17 +124,17 @@ def poll_device(device_config: dict) -> dict:
         result["hostname"] = hostname_raw.replace("hostname", "").strip() or device_config["name"]
 
         conn.disconnect()
-        print(f"  ✅ {device_config['name']}: {len(result['interfaces'])} interfaces, {len(result['acls'])} ACLs polled")
+        print(f"  [OK] {device_config['name']}: {len(result['interfaces'])} interfaces, {len(result['acls'])} ACLs polled")
 
     except NetmikoTimeoutException:
-        result["error"] = f"Timeout — device {device_config['host']} unreachable"
-        print(f"  ⚠️  {device_config['name']}: Timeout")
+        result["error"] = f"Timeout -- device {device_config['host']} unreachable"
+        print(f"  [WARN] {device_config['name']}: Timeout")
     except NetmikoAuthenticationException:
-        result["error"] = "Authentication failed — check username/password in config.py"
-        print(f"  ❌ {device_config['name']}: Auth error")
+        result["error"] = "Authentication failed -- check username/password in config.py"
+        print(f"  [FAIL] {device_config['name']}: Auth error")
     except Exception as e:
         result["error"] = str(e)
-        print(f"  ❌ {device_config['name']}: {e}")
+        print(f"  [FAIL] {device_config['name']}: {e}")
 
     return result
 

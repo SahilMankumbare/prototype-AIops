@@ -2,7 +2,7 @@
 remediation.py
 --------------
 Pushes configuration fixes to real Cisco devices via SSH.
-Called by ai_agent.py when Claude decides to AUTO-FIX.
+Called by ai_agent.py when gemini decides to AUTO-FIX.
 """
 
 from netmiko import ConnectHandler, NetmikoTimeoutException, NetmikoAuthenticationException
